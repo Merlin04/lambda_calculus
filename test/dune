@@ -1,0 +1,5 @@
+(env (dev (flags (:standard -w a-32))))
+
+(test
+ (name lambda_calculus)
+ (libraries lambda_calculus ounit2))
