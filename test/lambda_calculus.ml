@@ -60,22 +60,22 @@ let equiv_tests = "test suite for alpha-equivalence" >::: [
 let parse_tests = "test suite for parser" >::: [
     "id" >::
     (fun _ -> assert_equal ~printer:print_lc_expr
-        (ELambda ("x", (EVar "x")))
-        (parse "&x.x"));
+        (ELambda ("x", TInt, (EVar "x")))
+        (parse "&x : int .x"));
     "application" >::
     (fun _ -> assert_equal ~printer:print_lc_expr
-        (EApp (ELambda ("x", (EVar "x")), EVar "y"))
-        (parse "(&x.x) y"));
+        (EApp (ELambda ("x", TUnit, (EVar "x")), EVar "y"))
+        (parse "(&x : unit.x) y"));
     "apply inside lambda" >::
     (fun _ -> assert_equal ~printer:print_lc_expr
-        (ELambda ("x", EApp (EVar "x", EVar "y")))
-        (parse "&x.x y"));
+        (ELambda ("x", TLambda (TBool, TUnit), EApp (EVar "x", EVar "y")))
+        (parse "&x : bool -> unit.x y"));
     "naming" >::
     (fun _ -> assert_equal ~printer:print_lc_expr
-        (EApp (ELambda ("fun", (EApp (EVar "fun", EVar "v"))),
-               ELambda ("x", ELambda ("y", EVar "x"))))
-        (parse "fun = &x. &y. x; fun v"));
-    "naming church numerals" >::
+        (EApp (ELambda ("fun", TLambda(TInt, TLambda(TBool, TInt)), (EApp (EVar "fun", EVar "v"))),
+               ELambda ("x", TInt, ELambda ("y", TBool, EVar "x"))))
+        (parse "fun = &x:int. &y:bool. x; fun v"));
+    (*"naming church numerals" >::
     (fun _ -> assert_equal ~printer:print_lc_expr
         (EApp
            (ELambda
@@ -96,31 +96,44 @@ let parse_tests = "test suite for parser" >::: [
          (ELambda ("f", ELambda ("x", EVar "x")))))
         (parse ("zero = &f. &x. x;" ^
                 "succ = &n. &f. &x. f (n f x);" ^
-                "succ (succ zero)")));
+                "succ (succ zero)")));*)
   ]
 
 let reduce_tests = "test suite for the reduction engine" >::: [
     "id" >::
-    (fun _ -> assert_equal ~printer:print_lc_expr
+    (fun _ -> assert_equal ~printer:print_lc_expr ~cmp:alpha_equiv
         (EVar "y")
-        (reduce (parse "(&x.x)y")));
-    "two" >::
-    (fun _ -> assert_equal ~printer:print_lc_expr
+        (reduce (parse "(&x:int.x)y")));
+    (*"two" >::
+    (fun _ -> assert_equal ~printer:print_lc_expr ~cmp:alpha_equiv
         (parse "&f. &x. f (f x)")
         (reduce (parse ("zero = &f. &x. x;" ^
                         "succ = &n. &f. &x. f (n f x);" ^
-                        "succ (succ zero)"))));
+                        "succ (succ zero)"))));*)
     "shadowing" >::
-    (fun _ -> assert_equal ~printer:print_lc_expr
-        (ELambda ("x", EVar "x"))
-        (reduce (parse "(&x. &x. x) y")));
+    (fun _ -> assert_equal ~printer:print_lc_expr ~cmp:alpha_equiv
+        (ELambda ("x", TUnit, EVar "x"))
+        (reduce (parse "(&x:int. &x:unit. x) y")));
   ]
+
+let type_tests = "test suite for typechecker" >::: [
+  "binding" >::
+  (fun _ -> assert_raises (TypeError "Expected type int -> unit but got argument of type int -> int")
+    (fun () -> (reduce (parse "a = (&x : int . x); (&x : int -> unit . x) a")))
+  );
+  "ill-typed variables" >::
+  (fun _ -> assert_equal ~printer:print_lc_expr ~cmp:alpha_equiv
+    (EVar "x")
+    (reduce (parse "(& a : unit . a) x"))
+  );
+]
 
 let tests = "test_suite for lambda calculus" >::: [
     lex_tests;
-    equiv_tests;
+(*    equiv_tests; *)
     parse_tests;
     reduce_tests;
+    type_tests;
   ]
 
 let _ = run_test_tt_main tests

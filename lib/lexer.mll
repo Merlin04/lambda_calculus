@@ -10,6 +10,7 @@ exception SyntaxError of string
 
 let id = ['_' 'a'-'z' 'A'-'Z'] ['_' 'a'-'z' 'A'-'Z' '0'-'9']*
 let whitespace = [' ' '\t' '\r' '\n']+
+let int_pattern = ['0'-'9']+
 
 
 rule tok = parse
@@ -22,8 +23,16 @@ rule tok = parse
 | "λ" { Lambda }
 | '.' { Dot }
 | ';' { Semicolon }
+| ':' { Colon }
+| "->" { Arrow }
+| "int" { TIntToken }
+| "bool" { TBoolToken }
+| "unit" { TUnitToken }
 | "/*" { comment lexbuf }
+| "true" { Bool (true) }
+| "false" { Bool (false) }
 | id as s { Id s }
+| int_pattern as i { Integer (int_of_string i) }
 | eof { EOF }
 | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
 
